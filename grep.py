@@ -1,6 +1,85 @@
 import argparse
+
 import re
+
 import sys
+
+
+def check(lines, line, i, params, tmp, tmp2, buff, contextsize, flag):
+    if params.count:
+
+        output(str(i + 1))
+
+    else:
+
+        if params.context:
+
+            count = contextsize
+            if ("{}-".format(str(i + 1)) + line) in tmp2:
+                tmp2.remove(("{}-".format(str(i + 1)) + line))
+                tmp2.append(("{}:".format(str(i + 1)) + line))
+            for c in buff:
+
+                if c not in tmp and params.line_number:
+                    tmp2.append("{}-".format(str(i + 1 - count)) + c)
+                    tmp.append(c)
+                else:
+                    if c not in tmp:
+                        tmp2.append(c)
+                        tmp.append(c)
+                if count > 0:
+                    count = count - 1
+            if params.line_number and line not in tmp:
+                tmp2.append("{}:".format(str(i + 1)) + line)
+                tmp.append(line)
+            else:
+                if line not in tmp:
+                    tmp2.append(line)
+                    tmp.append(line)
+            flag[0] = contextsize
+            tmp.extend(buff)
+        elif params.before_context:
+            count = contextsize
+            for c in buff:
+                if c not in tmp and params.line_number:
+                    tmp2.append("{}-".format(str(i - count)) + c)
+                else:
+                    if c not in tmp:
+                        tmp2.append(c)
+                if count > 0:
+                    count = count - 1
+
+                tmp.extend(buff)
+
+            if params.line_number:
+
+                tmp2.append("{}-".format(str(i)) + line)
+
+            else:
+
+                tmp2.append(line)
+
+        elif params.after_context:
+
+            if params.line_number:
+
+                tmp2.append("{}-".format(str(i)) + line)
+
+            else:
+
+                tmp2.append(line)
+
+            flag[0] = contextsize
+
+        else:
+
+            if params.line_number:
+
+                tmp2.append("{}:".format(str(i + 1)) + line)
+
+            else:
+
+                tmp2.append(line)
 
 
 def output(line):
@@ -9,233 +88,83 @@ def output(line):
 
 def grep(lines, params):
     tmp = []
+    flag = [0, ]
     tmp2 = []
+    buff = []
+    contextsize = 0
+    if params.context:
+        contextsize = params.context
+    if params.before_context:
+        contextsize = params.before_context
+    if params.after_context:
+        contextsize = params.after_context
     i = 0
+
     for line in lines:
+
         line = line.rstrip()
+        if flag[0] > 0 and line not in tmp:
+            if params.line_number:
+
+                tmp2.append("{}-".format(str(i + 1)) + line)
+                tmp.append(line)
+            else:
+
+                tmp2.append(line)
+                tmp.append(line)
+            if flag[0] > 0:
+                flag[0] = flag[0] - 1
+
         a = params.pattern
+
         if "*" in str(params.pattern):
             a = a.replace("*", '\\w*')
-        if "?" in str(params.pattern):
 
+        if "?" in str(params.pattern):
             a = a.replace("?", '\\w')
-        
+
         if params.ignore_case:
+
             b = line.lower()
+
             a = a.lower()
+
             result = re.findall(a, b)
+
             if result:
                 output(lines[i])
 
             i = i + 1
+
             continue
 
-          
         if params.invert:
 
             result = re.findall(a, line)
+
             if len(result) == 0:
-                if params.count:
-                    output(str(i + 1))
-                else:
-
-                    if params.context:
-                        a = i - params.context
-                        if a < 0:
-                            a = 0
-                        b = i + params.context
-                        if b > len(lines) - 1:
-                            b = len(lines) - 1
-                        while a <= b:
-                            if a == i and params.line_number:
-                                if ("{}-".format(str(i + 1)) + line) in tmp2:
-                                    tmp2.remove(("{}-".format(str(i + 1)) + line))
-                                tmp2.append("{}:".format(str(i + 1)) + line)
-                                
-                                tmp.append(lines[a])
-                                a = a + 1
-                                continue
-
-                            if lines[a] not in tmp and params.line_number:
-                                
-                                tmp2.append("{}-".format(str(a + 1)) + lines[a])
-                            else:
-                                if lines[a] not in tmp:
-                                    
-                                    tmp2.append(lines[a])
-                            tmp.append(lines[a])
-                            a = a + 1
+                check(lines, line, i, params, tmp, tmp2, buff, contextsize, flag)
 
 
-
-
-
-
-                    elif params.before_context:
-
-                        a = i - params.before_context
-                        if a < 0:
-                            a = 0
-                        b = i
-                        if b > len(lines) - 1:
-                            b = len(lines) - 1
-                        while a <= b:
-                            if a != i:
-                                if lines[a] not in tmp and params.line_number:
-                                    
-                                    tmp2.append("{}-".format(str(a + 1)) + lines[a])
-                                else:
-                                    if lines[a] not in tmp:
-                                        
-                                        tmp2.append(lines[a])
-                            tmp.append(lines[a])
-                            a = a + 1
-
-                        if params.line_number:
-                            
-                            tmp2.append("{}-".format(str(a + 1)) + lines[a])
-                        else:
-                            tmp2.append(line)
-                            
-                    elif params.after_context:
-                        if params.line_number:
-                            
-                            tmp2.append("{}-".format(str(a + 1)) + lines[a])
-
-                        else:
-
-                            
-                            tmp2.append(line)
-                        a = i
-
-                        b = i + params.after_context
-                        if b > len(lines) - 1:
-                            b = len(lines) - 1
-                        while a <= b:
-                            if a != i:
-                                if lines[a] not in tmp and params.line_number:
-                                    
-                                    tmp2.append("{}-".format(str(a + 1)) + lines[a])
-                                else:
-                                    if lines[a] not in tmp:
-                                        
-                                        tmp2.append(lines[a])
-                            tmp.append(lines[a])
-                            a = a + 1
-
-
-                    else:
-                        if params.line_number:
-                            
-                            tmp2.append("{}:".format(str(i + 1)) + line)
-                        else:
-                            tmp2.append(line)
 
 
         else:
+
             result = re.findall(a, line)
+
             if len(result) != 0:
-                if params.count:
-                    output(str(i + 1))
-                else:
+                check(lines, line, i, params, tmp, tmp2, buff, contextsize, flag)
 
-                    if params.context:
-
-                        a = i - params.context
-                        if a < 0:
-                            a = 0
-                        b = i + params.context
-                        if b > len(lines) - 1:
-                            b = len(lines) - 1
-                        while a <= b:
-                            if a == i and params.line_number:
-                                if ("{}-".format(str(i + 1)) + line) in tmp2:
-                                    tmp2.remove(("{}-".format(str(i + 1)) + line))
-                                tmp2.append("{}:".format(str(i + 1)) + line)
-                                
-                                tmp.append(lines[a])
-                                a = a + 1
-                                continue
-
-                            if lines[a] not in tmp and params.line_number:
-                                
-                                tmp2.append("{}-".format(str(a + 1)) + lines[a])
-                            else:
-                                if lines[a] not in tmp:
-                                    
-                                    tmp2.append(lines[a])
-                            tmp.append(lines[a])
-                            a = a + 1
-
-
-
-
-
-
-                    elif params.before_context:
-
-                        a = i - params.before_context
-                        if a < 0:
-                            a = 0
-                        b = i
-                        if b > len(lines) - 1:
-                            b = len(lines) - 1
-                        while a <= b:
-                            if a != i:
-                                if lines[a] not in tmp and params.line_number:
-                                    
-                                    tmp2.append("{}-".format(str(a + 1)) + lines[a])
-                                else:
-                                    if lines[a] not in tmp:
-                                        
-                                        tmp2.append(lines[a])
-                            tmp.append(lines[a])
-                            a = a + 1
-
-                        if params.line_number:
-                            
-                            tmp2.append("{}-".format(str(a + 1)) + lines[a])
-                        else:
-                            tmp2.append(line)
-                            
-                    elif params.after_context:
-                        if params.line_number:
-                            
-                            tmp2.append("{}-".format(str(a + 1)) + lines[a])
-
-                        else:
-
-                            
-                            tmp2.append(line)
-                        a = i
-
-                        b = i + params.after_context
-                        if b > len(lines) - 1:
-                            b = len(lines) - 1
-                        while a <= b:
-                            if a != i:
-                                if lines[a] not in tmp and params.line_number:
-                                    
-                                    tmp2.append("{}-".format(str(a + 1)) + lines[a])
-                                else:
-                                    if lines[a] not in tmp:
-                                        
-                                        tmp2.append(lines[a])
-                            tmp.append(lines[a])
-                            a = a + 1
-
-
-                    else:
-                        if params.line_number:
-                            
-                            tmp2.append("{}:".format(str(i + 1)) + line)
-                        else:
-                            tmp2.append(line)
         i = i + 1
-        
+
+        if contextsize > 0:
+            if len(buff) == contextsize:
+                buff = []
+            if len(buff) < contextsize:
+                buff.append(line)
+
     for f in tmp2:
         output(f)
-        
 
 
 def parse_args(args):
