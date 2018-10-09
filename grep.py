@@ -4,8 +4,10 @@ import re
 
 import sys
 
+flag=0
 
-def check(lines, line, i, params, tmp, tmp2, buff, contextsize, flag):
+def check(lines, line, i, params, usedWords, printWords, buff, contextsize):
+    global flag
     if params.count:
 
         output(str(i + 1))
@@ -15,71 +17,71 @@ def check(lines, line, i, params, tmp, tmp2, buff, contextsize, flag):
         if params.context:
 
             count = contextsize
-            if ("{}-".format(str(i + 1)) + line) in tmp2:
-                tmp2.remove(("{}-".format(str(i + 1)) + line))
-                tmp2.append(("{}:".format(str(i + 1)) + line))
+            if ("{}-".format(str(i + 1)) + line) in printWords:
+                printWords.remove(("{}-".format(str(i + 1)) + line))
+                printWords.append(("{}:".format(str(i + 1)) + line))
             for c in buff:
 
-                if c not in tmp and params.line_number:
-                    tmp2.append("{}-".format(str(i + 1 - count)) + c)
-                    tmp.append(c)
+                if c not in usedWords and params.line_number:
+                    printWords.append("{}-".format(str(i + 1 - count)) + c)
+                    usedWords.append(c)
                 else:
-                    if c not in tmp:
-                        tmp2.append(c)
-                        tmp.append(c)
+                    if c not in usedWords:
+                        printWords.append(c)
+                        usedWords.append(c)
                 if count > 0:
                     count = count - 1
-            if params.line_number and line not in tmp:
-                tmp2.append("{}:".format(str(i + 1)) + line)
-                tmp.append(line)
+            if params.line_number and line not in usedWords:
+                printWords.append("{}:".format(str(i + 1)) + line)
+                usedWords.append(line)
             else:
-                if line not in tmp:
-                    tmp2.append(line)
-                    tmp.append(line)
-            flag[0] = contextsize
-            tmp.extend(buff)
+                if line not in usedWords:
+                    printWords.append(line)
+                    usedWords.append(line)
+            flag = contextsize
+            usedWords.extend(buff)
         elif params.before_context:
             count = contextsize
             for c in buff:
-                if c not in tmp and params.line_number:
-                    tmp2.append("{}-".format(str(i - count)) + c)
+                if c not in usedWords and params.line_number:
+                    printWords.append("{}-".format(str(i - count)) + c)
                 else:
-                    if c not in tmp:
-                        tmp2.append(c)
+                    if c not in usedWords:
+                        printWords.append(c)
                 if count > 0:
                     count = count - 1
 
-                tmp.extend(buff)
+                    usedWords.extend(buff)
 
             if params.line_number:
 
-                tmp2.append("{}-".format(str(i)) + line)
+                printWords.append("{}-".format(str(i)) + line)
 
             else:
 
-                tmp2.append(line)
+                printWords.append(line)
 
         elif params.after_context:
 
             if params.line_number:
 
-                tmp2.append("{}-".format(str(i)) + line)
+                printWords.append("{}-".format(str(i)) + line)
 
             else:
 
-                tmp2.append(line)
+                printWords.append(line)
 
-            flag[0] = contextsize
+            flag = contextsize
 
         else:
 
             if params.line_number:
 
-                tmp2.append("{}:".format(str(i + 1)) + line)
+                printWords.append("{}:".format(str(i + 1)) + line)
 
             else:
 
-                tmp2.append(line)
+                printWords.append(line)
 
 
 def output(line):
@@ -87,9 +89,10 @@ def output(line):
 
 
 def grep(lines, params):
-    tmp = []
-    flag = [0, ]
-    tmp2 = []
+    usedWords = []
+    global flag
+    flag=0
+    printWords = []
     buff = []
     contextsize = 0
     if params.context:
@@ -103,17 +106,17 @@ def grep(lines, params):
     for line in lines:
 
         line = line.rstrip()
-        if flag[0] > 0 and line not in tmp:
+        if flag > 0 and line not in usedWords:
             if params.line_number:
 
-                tmp2.append("{}-".format(str(i + 1)) + line)
-                tmp.append(line)
+                printWords.append("{}-".format(str(i + 1)) + line)
+                usedWords.append(line)
             else:
 
-                tmp2.append(line)
-                tmp.append(line)
-            if flag[0] > 0:
-                flag[0] = flag[0] - 1
+                printWords.append(line)
+                usedWords.append(line)
+            if flag > 0:
+                flag = flag - 1
 
         a = params.pattern
 
@@ -143,7 +146,7 @@ def grep(lines, params):
             result = re.findall(a, line)
 
             if len(result) == 0:
-                check(lines, line, i, params, tmp, tmp2, buff, contextsize, flag)
+                check(lines, line, i, params, usedWords, printWords, buff, contextsize)
 
 
 
@@ -153,7 +156,7 @@ def grep(lines, params):
             result = re.findall(a, line)
 
             if len(result) != 0:
-                check(lines, line, i, params, tmp, tmp2, buff, contextsize, flag)
+                check(lines, line, i, params, usedWords, printWords, buff, contextsize)
 
         i = i + 1
 
@@ -163,7 +166,7 @@ def grep(lines, params):
             if len(buff) < contextsize:
                 buff.append(line)
 
-    for f in tmp2:
+    for f in printWords:
         output(f)
 
 
