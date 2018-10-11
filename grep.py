@@ -6,8 +6,8 @@ import sys
 
 flag=0
 
-def addtoprint(printWords, usedWords, line):
-    printWords.append(line)
+def addtoprint(usedWords, line):
+    output(line)
     usedWords.append(line)
 
 
@@ -22,25 +22,23 @@ def check(lines, line, i, params, usedWords, printWords, buff, contextsize):
         if params.context:
 
             count = contextsize
-            if ("{}-".format(str(i + 1)) + line) in printWords:
-                printWords.remove("{}-{}".format(str(i + 1), line))
-                printWords.append("{}:{}".format(str(i + 1), line))
+
             for c in buff:
 
                 if c not in usedWords and params.line_number:
-                    printWords.append("{}-{}".format(str(i + 1 - count), c))
+                    output("{}-{}".format(str(i + 1 - count), c))
                     usedWords.append(c)
                 else:
                     if c not in usedWords:
-                        addtoprint(printWords, usedWords,c)
+                        addtoprint(usedWords,c)
                 if count > 0:
                     count = count - 1
             if params.line_number and line not in usedWords:
-                printWords.append("{}:{}".format(str(i + 1), line))
+                output("{}:{}".format(str(i + 1), line))
                 usedWords.append(line)
             else:
                 if line not in usedWords:
-                    addtoprint(printWords, usedWords,line)
+                    addtoprint( usedWords,line)
             flag = contextsize
             usedWords.extend(buff)
 
@@ -48,10 +46,10 @@ def check(lines, line, i, params, usedWords, printWords, buff, contextsize):
             count = contextsize
             for c in buff:
                 if c not in usedWords and params.line_number:
-                    printWords.append("{}-{}".format(str(i - count+1), c))
+                    output("{}-{}".format(str(i - count+1), c))
                 else:
                     if c not in usedWords:
-                        printWords.append(c)
+                        output(c)
                 if count > 0:
                     count = count - 1
 
@@ -59,22 +57,22 @@ def check(lines, line, i, params, usedWords, printWords, buff, contextsize):
 
             if params.line_number and line not in usedWords:
 
-                printWords.append("{}:{}".format(str(i+1), line))
+                output("{}:{}".format(str(i+1), line))
 
             else:
                 if line not in usedWords:
-                    addtoprint(printWords, usedWords,line)
+                    addtoprint( usedWords,line)
 
         elif params.after_context:
 
             if params.line_number and line not in usedWords:
 
-                printWords.append("{}-{}".format(str(i+1), line))
+                output("{}-{}".format(str(i+1), line))
                 usedWords.append(line)
 
             else:
                 if line not in usedWords:
-                    addtoprint(printWords, usedWords,line)
+                    addtoprint( usedWords,line)
 
             flag = contextsize
 
@@ -82,11 +80,11 @@ def check(lines, line, i, params, usedWords, printWords, buff, contextsize):
 
             if params.line_number:
 
-                printWords.append("{}:{}".format(str(i + 1), line))
+                output("{}:{}".format(str(i + 1), line))
 
             else:
 
-                printWords.append(line)
+                output(line)
 
 
 def output(line):
@@ -111,16 +109,7 @@ def grep(lines, params):
     for line in lines:
 
         line = line.rstrip()
-        if flag > 0 and line not in usedWords:
-            if params.line_number:
 
-                printWords.append("{}-".format(str(i+1)) + line)
-                usedWords.append(line)
-            else:
-
-                addtoprint(printWords, usedWords,line)
-            if flag > 0:
-                flag = flag - 1
 
         a = params.pattern
 
@@ -161,6 +150,17 @@ def grep(lines, params):
 
             if len(result) != 0:
                 check(lines, line, i, params, usedWords, printWords, buff, contextsize)
+            if len(result)==0:
+                if flag > 0 and line not in usedWords:
+                    if params.line_number:
+
+                        output("{}-".format(str(i + 1)) + line)
+                        usedWords.append(line)
+                    else:
+
+                        addtoprint( usedWords, line)
+                    if flag > 0:
+                        flag = flag - 1
 
         i = i + 1
 
@@ -170,8 +170,8 @@ def grep(lines, params):
             if len(buff) < contextsize:
                 buff.append(line)
 
-    for f in printWords:
-        output(f)
+    # for f in printWords:
+    #     output(f)
 
 
 def parse_args(args):
