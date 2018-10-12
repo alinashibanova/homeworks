@@ -4,87 +4,58 @@ import re
 
 import sys
 
-flag=0
-
-def addtoprint(usedWords, line):
-    output(line)
-    usedWords.append(line)
+flag = 0
 
 
-def check(lines, line, i, params, usedWords, printWords, buff, contextsize):
+def check(line, i, params, buff, contextsize):
     global flag
     if params.count:
-
         output(str(i + 1))
-
     else:
-
         if params.context:
-
             count = contextsize
-
             for c in buff:
-
-                if c not in usedWords and params.line_number:
+                if params.line_number:
                     output("{}-{}".format(str(i + 1 - count), c))
-                    usedWords.append(c)
                 else:
-                    if c not in usedWords:
-                        addtoprint(usedWords,c)
+                    output(c)
                 if count > 0:
                     count = count - 1
-            if params.line_number and line not in usedWords:
+            if params.line_number and line not in buff:
                 output("{}:{}".format(str(i + 1), line))
-                usedWords.append(line)
+                # usedWords.append(line)
             else:
-                if line not in usedWords:
-                    addtoprint( usedWords,line)
+                if line not in buff:
+                    output(line)
             flag = contextsize
-            usedWords.extend(buff)
-
-        elif params.before_context:
-            count = contextsize
-            for c in buff:
-                if c not in usedWords and params.line_number:
-                    output("{}-{}".format(str(i - count+1), c))
-                else:
-                    if c not in usedWords:
-                        output(c)
-                if count > 0:
-                    count = count - 1
-
-                    usedWords.extend(buff)
-
-            if params.line_number and line not in usedWords:
-
-                output("{}:{}".format(str(i+1), line))
-
-            else:
-                if line not in usedWords:
-                    addtoprint( usedWords,line)
-
-        elif params.after_context:
-
-            if params.line_number and line not in usedWords:
-
-                output("{}-{}".format(str(i+1), line))
-                usedWords.append(line)
-
-            else:
-                if line not in usedWords:
-                    addtoprint( usedWords,line)
-
-            flag = contextsize
-
         else:
-
-            if params.line_number:
-
-                output("{}:{}".format(str(i + 1), line))
-
-            else:
-
-                output(line)
+            if params.before_context:
+                count = contextsize
+                for c in buff:
+                    if params.line_number:
+                        output("{}-{}".format(str(i - count + 1), c))
+                    else:
+                        output(c)
+                    if count > 0:
+                        count = count - 1
+                if params.line_number and line not in buff:
+                    output("{}:{}".format(str(i + 1), line))
+                else:
+                    if line not in buff:
+                        output(line)
+            if params.after_context:
+                buff = []
+                if params.line_number:
+                    output("{}:{}".format(str(i + 1), line))
+                else:
+                    if line not in buff:
+                        output(line)
+                flag = contextsize
+            if params.after_context == params.before_context == params.context == 0:
+                if params.line_number:
+                    output("{}:{}".format(str(i + 1), line))
+                else:
+                    output(line)
 
 
 def output(line):
@@ -94,7 +65,7 @@ def output(line):
 def grep(lines, params):
     usedWords = []
     global flag
-    flag=0
+    flag = 0
     printWords = []
     buff = []
     contextsize = 0
@@ -105,73 +76,53 @@ def grep(lines, params):
     if params.after_context:
         contextsize = params.after_context
     i = 0
-
     for line in lines:
-
         line = line.rstrip()
-
-
         a = params.pattern
-
         if "*" in str(params.pattern):
             a = a.replace("*", '\\w*')
-
         if "?" in str(params.pattern):
             a = a.replace("?", '\\w')
-
         if params.ignore_case:
-
-            b = line.lower()
-
-            a = a.lower()
-
-            result = re.findall(a, b)
-
-            if result:
-                output(lines[i])
-
-            i = i + 1
-
-            continue
-
+            a = "(?i)" + a
         if params.invert:
-
             result = re.findall(a, line)
-
             if len(result) == 0:
-                check(lines, line, i, params, usedWords, printWords, buff, contextsize)
-
-
-
-
-        else:
-
-            result = re.findall(a, line)
-
+                check(line, i, params, buff, contextsize)
             if len(result) != 0:
-                check(lines, line, i, params, usedWords, printWords, buff, contextsize)
-            if len(result)==0:
-                if flag > 0 and line not in usedWords:
+                if flag > 0:
                     if params.line_number:
-
                         output("{}-".format(str(i + 1)) + line)
-                        usedWords.append(line)
                     else:
-
-                        addtoprint( usedWords, line)
-                    if flag > 0:
-                        flag = flag - 1
+                        output(line)
+                if contextsize > 0 and flag == 0:
+                    if len(buff) == contextsize:
+                        buff = []
+                    if len(buff) < contextsize:
+                        buff.append(line)
+                if flag > 0:
+                    flag = flag - 1
+        else:
+            result = re.findall(a, line)
+            if len(result) != 0:
+                check(line, i, params, buff, contextsize)
+                if len(buff) == contextsize:
+                    buff = []
+            if len(result) == 0:
+                if flag > 0:
+                    if params.line_number:
+                        output("{}-".format(str(i + 1)) + line)
+                    else:
+                        output(line)
+                if contextsize > 0 and flag == 0:
+                    if len(buff) == contextsize:
+                        buff = []
+                    if len(buff) < contextsize:
+                        buff.append(line)
+                if flag > 0:
+                    flag = flag - 1
 
         i = i + 1
-
-        if contextsize > 0:
-            if len(buff) == contextsize:
-                buff = []
-            if len(buff) < contextsize:
-                buff.append(line)
-
-    # for f in printWords:
-    #     output(f)
 
 
 def parse_args(args):
