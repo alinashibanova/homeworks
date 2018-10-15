@@ -7,7 +7,7 @@ import sys
 flag = 0
 
 
-def check(line, i, params, buff, contextsize):
+def checkContexts(line, i, params, buff, contextsize):
     global flag
     if params.count:
         output(str(i + 1))
@@ -28,6 +28,7 @@ def check(line, i, params, buff, contextsize):
                 if line not in buff:
                     output(line)
             flag = contextsize
+            del buff[:]
         else:
             if params.before_context:
                 count = contextsize
@@ -63,10 +64,8 @@ def output(line):
 
 
 def grep(lines, params):
-    usedWords = []
     global flag
     flag = 0
-    printWords = []
     buff = []
     contextsize = 0
     if params.context:
@@ -88,41 +87,35 @@ def grep(lines, params):
         if params.invert:
             result = re.findall(a, line)
             if len(result) == 0:
-                check(line, i, params, buff, contextsize)
+                checkContexts(line, i, params, buff, contextsize)
             if len(result) != 0:
-                if flag > 0:
-                    if params.line_number:
-                        output("{}-".format(str(i + 1)) + line)
-                    else:
-                        output(line)
-                if contextsize > 0 and flag == 0:
-                    if len(buff) == contextsize:
-                        buff = []
-                    if len(buff) < contextsize:
-                        buff.append(line)
-                if flag > 0:
-                    flag = flag - 1
+                flagCheck(params, contextsize, line, i, buff)
         else:
             result = re.findall(a, line)
             if len(result) != 0:
-                check(line, i, params, buff, contextsize)
-                if len(buff) == contextsize:
-                    buff = []
+                checkContexts(line, i, params, buff, contextsize)
+                if len(buff) == contextsize and len(buff)>0:
+                    del buff[0]
             if len(result) == 0:
-                if flag > 0:
-                    if params.line_number:
-                        output("{}-".format(str(i + 1)) + line)
-                    else:
-                        output(line)
-                if contextsize > 0 and flag == 0:
-                    if len(buff) == contextsize:
-                        buff = []
-                    if len(buff) < contextsize:
-                        buff.append(line)
-                if flag > 0:
-                    flag = flag - 1
+                flagCheck(params, contextsize, line, i, buff)
 
         i = i + 1
+
+
+def flagCheck(params, contextsize, line, i, buff):
+    global flag
+    if flag > 0:
+        if params.line_number:
+            output("{}-".format(str(i + 1)) + line)
+        else:
+            output(line)
+    if contextsize > 0 and flag == 0:
+        if len(buff) == contextsize:
+            del buff[0]
+        if len(buff) < contextsize:
+            buff.append(line)
+    if flag > 0:
+        flag = flag - 1
 
 
 def parse_args(args):
