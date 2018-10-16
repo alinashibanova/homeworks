@@ -44,8 +44,9 @@ def checkContexts(line, i, params, buff, contextsize):
                 else:
                     if line not in buff:
                         output(line)
+                del buff[:]
             if params.after_context:
-                buff = []
+                del buff[:]
                 if params.line_number:
                     output("{}:{}".format(str(i + 1), line))
                 else:
