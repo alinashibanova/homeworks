@@ -14,6 +14,8 @@ def checkContexts(line, i, params, buff, contextsize):
     else:
         if params.context:
             count = contextsize
+            if len(buff) < contextsize:
+                count = len(buff)
             for c in buff:
                 if params.line_number:
                     output("{}-{}".format(str(i + 1 - count), c))
@@ -32,6 +34,8 @@ def checkContexts(line, i, params, buff, contextsize):
         else:
             if params.before_context:
                 count = contextsize
+                if len(buff)<contextsize:
+                    count=len(buff)
                 for c in buff:
                     if params.line_number:
                         output("{}-{}".format(str(i - count + 1), c))
