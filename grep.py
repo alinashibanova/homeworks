@@ -7,14 +7,15 @@ import sys
 flag = 0
 
 
-def checkContexts(line, i, params, buff, contextsize):
+def checkContexts(line, i, params, buff, befcontextsize, aftcontextsize):
     global flag
+    prev=0
     if params.count:
         output(str(i + 1))
     else:
         if params.context:
-            count = contextsize
-            if len(buff) < contextsize:
+            count = befcontextsize
+            if len(buff) < befcontextsize:
                 count = len(buff)
             for c in buff:
                 if params.line_number:
@@ -29,12 +30,12 @@ def checkContexts(line, i, params, buff, contextsize):
             else:
                 if line not in buff:
                     output(line)
-            flag = contextsize
+            flag = befcontextsize
             del buff[:]
         else:
             if params.before_context:
-                count = contextsize
-                if len(buff)<contextsize:
+                count = befcontextsize
+                if len(buff)<befcontextsize:
                     count=len(buff)
                 for c in buff:
                     if params.line_number:
@@ -45,18 +46,20 @@ def checkContexts(line, i, params, buff, contextsize):
                         count = count - 1
                 if params.line_number and line not in buff:
                     output("{}:{}".format(str(i + 1), line))
+                    prev=1
                 else:
                     if line not in buff:
                         output(line)
+                        prev = 1
                 del buff[:]
             if params.after_context:
                 del buff[:]
-                if params.line_number:
+                if params.line_number  and prev==0:
                     output("{}:{}".format(str(i + 1), line))
                 else:
-                    if line not in buff:
+                    if line not in buff  and prev==0:
                         output(line)
-                flag = contextsize
+                flag = aftcontextsize
             if params.after_context == params.before_context == params.context == 0:
                 if params.line_number:
                     output("{}:{}".format(str(i + 1), line))
@@ -72,13 +75,14 @@ def grep(lines, params):
     global flag
     flag = 0
     buff = []
-    contextsize = 0
+    befcontextsize = 0
+    aftcontextsize = 0
     if params.context:
-        contextsize = params.context
+        befcontextsize = params.context
     if params.before_context:
-        contextsize = params.before_context
+        befcontextsize = params.before_context
     if params.after_context:
-        contextsize = params.after_context
+        aftcontextsize = params.after_context
     i = 0
     for line in lines:
         line = line.rstrip()
@@ -92,32 +96,32 @@ def grep(lines, params):
         if params.invert:
             result = re.findall(a, line)
             if len(result) == 0:
-                checkContexts(line, i, params, buff, contextsize)
+                checkContexts(line, i, params, buff, befcontextsize, aftcontextsize)
             if len(result) != 0:
-                flagCheck(params, contextsize, line, i, buff)
+                flagCheck(params, line, i, buff, befcontextsize)
         else:
             result = re.findall(a, line)
             if len(result) != 0:
-                checkContexts(line, i, params, buff, contextsize)
-                if len(buff) == contextsize and len(buff)>0:
+                checkContexts(line, i, params, buff, befcontextsize, aftcontextsize)
+                if len(buff) == befcontextsize and len(buff)>0:
                     del buff[0]
             if len(result) == 0:
-                flagCheck(params, contextsize, line, i, buff)
+                flagCheck(params, line, i, buff, befcontextsize)
 
         i = i + 1
 
 
-def flagCheck(params, contextsize, line, i, buff):
+def flagCheck(params, line, i, buff,befcontextsize):
     global flag
     if flag > 0:
         if params.line_number:
             output("{}-".format(str(i + 1)) + line)
         else:
             output(line)
-    if contextsize > 0 and flag == 0:
-        if len(buff) == contextsize:
+    if befcontextsize > 0 and flag == 0:
+        if len(buff) == befcontextsize:
             del buff[0]
-        if len(buff) < contextsize:
+        if len(buff) < befcontextsize:
             buff.append(line)
     if flag > 0:
         flag = flag - 1
